@@ -14,6 +14,10 @@ TARGET_EVENT = pygame.USEREVENT
 TARGET_PADDING = 30
 
 BG_COLOR = (0,25,40)
+LIVES = 3
+TOP_BAR_HEIGHT = 50
+
+LABEL_FONT = pygame.font.SysFont("comicsans",24)
 
 class Target:
     MAX_SIZE = 30
@@ -43,6 +47,13 @@ class Target:
         pygame.draw.circle(win,self.SECOND_COLOR,(self.x,self.y),self.size*0.4)
 
 
+
+    def collide(self,x,y):
+        dis = math.sqrt((x - self.x) ** 2 + (y - self.y)**2)
+        return dis <= self.size
+
+
+
 def draw(win,targets):
     win.fill(BG_COLOR)
 
@@ -51,14 +62,37 @@ def draw(win,targets):
 
     pygame.display.update()
 
+def format_time(secs):
+    milli = math.floor(int(secs*1000%1000)/100)
+    seconds = int(round(secs % 60,1))
+    minutes = int(secs // 60)
+
+    return f"{minutes:02d}:{seconds:02d}.{milli}"
+
+def draw_top_bar(win,elapsed_time,targets_passed,misses):
+    pygame.draw.rect(win,"gray",(0,0,WIDTH,TOP_BAR_HEIGHT))
+    time_label = LABEL_FONT.render(f"Time:{format_time(elapsed_time)}",1,"black")
+
+    win.blit(time_label,(5,5))
 
 def main():
     run = True
     targets = []
+    clock =pygame.time.Clock()
+
+    targets_pressed = 0
+    clicks = 0
+    misses = 0
+    start_time = time.time()
 
     pygame.time.set_timer(TARGET_EVENT,TARGET_INCREMENT)
 
     while run:
+        clock.tick(60)
+        click = False
+        mouse_pos = pygame.mouse.get_pos()
+        elapsed_time = time.time() - start_time
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -69,10 +103,29 @@ def main():
                 target = Target(x,y)
                 targets.append(target)
 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                click = True
+                clicks += 1
+
         for target in targets:
             target.update()
 
+            if target.size <= 0:
+                targets.remove(target)
+                misses += 1
+
+            if click and target.collide(*mouse_pos):
+                targets.remove(target)
+                targets_pressed += 1
+
+        if misses >= LIVES:
+            pass #end game
+
         draw(WIN,targets)
+        draw_top_bar(WIN,elapsed_time,targets_pressed,misses)
+        pygame.display.update()
+
+
     pygame.quit()
 
 if __name__ == "__main__":
